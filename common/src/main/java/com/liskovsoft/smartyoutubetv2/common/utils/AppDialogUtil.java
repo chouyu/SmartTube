@@ -410,11 +410,7 @@ public class AppDialogUtil {
 
         List<OptionItem> options = new ArrayList<>();
 
-<<<<<<< HEAD
-        for (int delayMs : Helpers.range(-2_000, 2_000, 10)) {
-=======
         for (int delayMs : Helpers.range(-2_000, 2_000, 5)) {
->>>>>>> 07a78c926 (Change audio shift range from -8s~+8s to -2s~+2s with 5ms step)
             options.add(UiOptionItem.from(context.getString(R.string.audio_shift_sec, Helpers.toString(delayMs / 1_000f)),
                     optionItem -> {
                         playerData.setAudioDelayMs(delayMs);
