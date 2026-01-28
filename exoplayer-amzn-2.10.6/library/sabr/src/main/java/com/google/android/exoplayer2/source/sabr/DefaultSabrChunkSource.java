@@ -11,6 +11,7 @@ import com.google.android.exoplayer2.Format;
 import com.google.android.exoplayer2.SeekParameters;
 import com.google.android.exoplayer2.extractor.Extractor;
 import com.google.android.exoplayer2.extractor.TrackOutput;
+import com.google.android.exoplayer2.extractor.rawcc.RawCcExtractor;
 import com.google.android.exoplayer2.source.BehindLiveWindowException;
 import com.google.android.exoplayer2.source.chunk.Chunk;
 import com.google.android.exoplayer2.source.chunk.ChunkExtractorWrapper;
@@ -24,13 +25,14 @@ import com.google.android.exoplayer2.source.sabr.manifest.AdaptationSet;
 import com.google.android.exoplayer2.source.sabr.manifest.RangedUri;
 import com.google.android.exoplayer2.source.sabr.manifest.Representation;
 import com.google.android.exoplayer2.source.sabr.manifest.SabrManifest;
-import com.google.android.exoplayer2.source.sabr.parser.core.SabrExtractor;
+import com.google.android.exoplayer2.source.sabr.parser.adapter.SabrFragmentedMp4Adapter;
+import com.google.android.exoplayer2.source.sabr.parser.adapter.SabrMatroskaAdapter;
 import com.google.android.exoplayer2.source.sabr.parser.core.SabrStream;
 import com.google.android.exoplayer2.source.sabr.parser.models.AudioSelector;
 import com.google.android.exoplayer2.source.sabr.parser.models.CaptionSelector;
 import com.google.android.exoplayer2.source.sabr.parser.models.FormatSelector;
 import com.google.android.exoplayer2.source.sabr.parser.models.VideoSelector;
-import com.google.android.exoplayer2.source.sabr.parser.misc.Utils;
+import com.google.android.exoplayer2.source.sabr.protos.misc.FormatId;
 import com.google.android.exoplayer2.trackselection.TrackSelection;
 import com.google.android.exoplayer2.upstream.DataSource;
 import com.google.android.exoplayer2.upstream.DataSpec;
@@ -106,6 +108,7 @@ public class DefaultSabrChunkSource implements SabrChunkSource {
     protected final RepresentationHolder[] representationHolders;
 
     private TrackSelection trackSelection;
+    private FormatSelector formatSelector;
     private SabrManifest manifest;
     private int periodIndex;
     private IOException fatalError;
@@ -152,6 +155,7 @@ public class DefaultSabrChunkSource implements SabrChunkSource {
         this.manifest = manifest;
         this.adaptationSetIndices = adaptationSetIndices;
         this.trackSelection = trackSelection;
+        this.formatSelector = createFormatSelector(trackType, trackSelection);
         this.trackType = trackType;
         this.dataSource = dataSource;
         this.periodIndex = periodIndex;
@@ -166,7 +170,7 @@ public class DefaultSabrChunkSource implements SabrChunkSource {
         //this.sabrStream.setAudioSelection(createAudioSelection(trackType, trackSelection));
         //this.sabrStream.setVideoSelection(createVideoSelection(trackType, trackSelection));
         //this.sabrStream.setCaptionSelection(createCaptionSelection(trackType, trackSelection));
-        this.sabrStream.setFormatSelector(createFormatSelector(trackType, trackSelection));
+        this.sabrStream.setFormatSelector(formatSelector);
 
         sabrHeaders = new HashMap<>();
         sabrHeaders.put("Content-Type", "application/x-protobuf");
@@ -209,6 +213,7 @@ public class DefaultSabrChunkSource implements SabrChunkSource {
     @Override
     public void updateTrackSelection(TrackSelection trackSelection) {
         this.trackSelection = trackSelection;
+        this.formatSelector = createFormatSelector(trackType, trackSelection);
     }
 
     @Override
@@ -312,13 +317,13 @@ public class DefaultSabrChunkSource implements SabrChunkSource {
             //    pendingIndexUri = selectedRepresentation.getIndexUri();
             //}
             //if (pendingInitializationUri != null || pendingIndexUri != null) {
-            if (pendingInitializationUri != null) {
-                // We have initialization and/or index requests to make.
-                out.chunk = newInitializationChunk(representationHolder, dataSource,
-                        trackSelection.getSelectedFormat(), trackSelection.getSelectionReason(),
-                        trackSelection.getSelectionData(), pendingInitializationUri, pendingIndexUri);
-                return;
-            }
+            //if (pendingInitializationUri != null) {
+            //    // We have initialization and/or index requests to make.
+            //    out.chunk = newInitializationChunk(representationHolder, dataSource,
+            //            trackSelection.getSelectedFormat(), trackSelection.getSelectionReason(),
+            //            trackSelection.getSelectionData(), pendingInitializationUri, pendingIndexUri);
+            //    return;
+            //}
         }
 
         long periodDurationUs = representationHolder.periodDurationUs;
@@ -417,6 +422,7 @@ public class DefaultSabrChunkSource implements SabrChunkSource {
 
     @Override
     public boolean onChunkLoadError(Chunk chunk, boolean cancelable, Exception e, long blacklistDurationMs) {
+        Log.e(TAG, "Chunk load failed: " + e.getMessage());
         if (!cancelable) {
             return false;
         }
@@ -523,7 +529,7 @@ public class DefaultSabrChunkSource implements SabrChunkSource {
                 representationHolder.representation.getCacheKey(),
                 0,
                 sabrHeaders);
-        Log.e(TAG, "Creating init chunk for track #" + trackType + ", rn=" + manifest.getSabrRequestNumber());
+        Log.e(TAG, "Load init chunk: track=" + trackType + ", rn=" + manifest.getSabrRequestNumber());
         return new InitializationChunk(dataSource, dataSpec, trackFormat,
                 trackSelectionReason, trackSelectionData, representationHolder.extractorWrapper);
     }
@@ -538,18 +544,22 @@ public class DefaultSabrChunkSource implements SabrChunkSource {
             long firstSegmentNum,
             //int maxSegmentCount,
             long seekTimeUs) {
-        Representation representation = representationHolder.representation;
+        boolean isInit = nexChunkIdx == -1;
+        FormatId formatId = formatSelector.getSelectedFormatId();
+        int iTag = formatId != null ? formatId.getItag() : -1;
 
         if (nexChunkIdx == -1) {
-            //sabrStream.reset();
+            sabrStream.reset(iTag);
         }
 
         nexChunkIdx++;
 
+        Representation representation = representationHolder.representation;
+
         //long startTimeMs = sabrStream.getSegmentStartTimeMs(trackType);
         //long durationMs = sabrStream.getSegmentDurationMs(trackType);
-        long startTimeMs = sabrStream.getSegmentStartTimeMs();
-        long durationMs = sabrStream.getSegmentDurationMs();
+        long startTimeMs = sabrStream.getSegmentStartTimeMs(iTag);
+        long durationMs = sabrStream.getSegmentDurationMs(iTag);
         boolean isSabrTimeSet = startTimeMs >= 0 && durationMs > 0;
 
         long startTimeUs = isSabrTimeSet ? startTimeMs * 1_000L : C.TIME_UNSET;
@@ -567,7 +577,7 @@ public class DefaultSabrChunkSource implements SabrChunkSource {
                 //segmentUri.resolveUri(baseUrl),
                 DataSpec.HTTP_METHOD_POST,
                 //sabrStream.createVideoPlaybackAbrRequest(trackType, false).toByteArray(),
-                manifest.createVideoPlaybackAbrRequest(trackType, false).toByteArray(),
+                manifest.createVideoPlaybackAbrRequest(trackType, isInit).toByteArray(),
                 0, 0, C.LENGTH_UNSET,
                 //segmentUri.start,
                 //segmentUri.start,
@@ -576,7 +586,7 @@ public class DefaultSabrChunkSource implements SabrChunkSource {
                 0,
                 sabrHeaders);
         long sampleOffsetUs = -representation.presentationTimeOffsetUs;
-        Log.e(TAG, "Creating media chunk #" + nexChunkIdx + " for track #" + trackType + ", rn=" + manifest.getSabrRequestNumber());
+        Log.e(TAG, "Load media chunk: track=" + trackType + ", rn=" + manifest.getSabrRequestNumber() + ", startTimeMs=" + startTimeMs);
         return new ContainerMediaChunk(
                 dataSource,
                 dataSpec,
@@ -928,7 +938,7 @@ public class DefaultSabrChunkSource implements SabrChunkSource {
                 TrackOutput playerEmsgTrackOutput,
                 SabrStream sabrStream) {
             String containerMimeType = representation.format.containerMimeType;
-            if (mimeTypeIsRawText(containerMimeType)) {
+            if (containerMimeType == null || mimeTypeIsRawText(containerMimeType)) {
                 return null;
             }
 
@@ -948,7 +958,22 @@ public class DefaultSabrChunkSource implements SabrChunkSource {
             //                    flags, null, null, null, closedCaptionFormats, playerEmsgTrackOutput);
             //}
 
-            Extractor extractor = new SabrExtractor(trackType, representation.format, sabrStream);
+            //Extractor extractor = new SabrExtractor(trackType, representation.format, sabrStream);
+
+            Extractor extractor;
+            if (MimeTypes.APPLICATION_RAWCC.equals(containerMimeType)) {
+                extractor = new RawCcExtractor(representation.format);
+            } else if (mimeTypeIsWebm(containerMimeType)) {
+                extractor = new SabrMatroskaAdapter(SabrMatroskaAdapter.FLAG_DISABLE_SEEK_FOR_CUES, sabrStream);
+            } else {
+                int flags = 0;
+                if (enableEventMessageTrack) {
+                    flags |= SabrFragmentedMp4Adapter.FLAG_ENABLE_EMSG_TRACK;
+                }
+                extractor =
+                        new SabrFragmentedMp4Adapter(
+                                flags, null, null, null, closedCaptionFormats, playerEmsgTrackOutput, sabrStream);
+            }
 
             // Prefer drmInitData obtained from the manifest over drmInitData obtained from the stream,
             // as per DASH IF Interoperability Recommendations V3.0, 7.5.3.

@@ -202,6 +202,7 @@ public class SabrExtractor implements Extractor {
     private Format format;
     private final int trackType;
     private int readNum;
+    private int partNum;
 
     // Temporary arrays.
     private final ParsableByteArray nalStartCode;
@@ -308,7 +309,7 @@ public class SabrExtractor implements Extractor {
     public int read(ExtractorInput input, PositionHolder seekPosition)
             throws IOException, InterruptedException {
 
-        Log.e(TAG, "Starting SABR read #" + readNum++ + " with track #" + trackType + "...");
+        Log.e(TAG, "Start SABR read: track=" + trackType + ", readNum=" + readNum++);
 
         sampleRead = false;
         boolean continueReading = true;
@@ -375,11 +376,13 @@ public class SabrExtractor implements Extractor {
 
     private void initializeSegment(MediaSegmentInitSabrPart part) {
         // TODO: not implemented
-        Log.e(TAG, "New init segment for track #" + trackType + ", startTimeMs: " + part.startTimeMs);
+        Log.e(TAG, "Begin segment: track=" + trackType + ", segNum=" + part.sequenceNumber + ", startTimeMs=" + part.startTimeMs + ", durationMs=" + part.durationMs);
     }
 
     private void writeSegmentData(MediaSegmentDataSabrPart part) throws IOException, InterruptedException {
         // binaryElement
+
+        Log.e(TAG, "Received SABR part: track=" + trackType + ", partNum=" + partNum++ + ", partLength=" + part.contentLength + ", partOffset=" + part.segmentStartBytes);
 
         // TODO: init seek segment data
 
@@ -406,12 +409,15 @@ public class SabrExtractor implements Extractor {
     }
 
     private void endSegment(MediaSegmentEndSabrPart part) {
+        Log.e(TAG, "End segment: track=" + trackType + ", segNum=" + part.sequenceNumber + ", startTimeMs=" + part.startTimeMs + ", durationMs=" + part.durationMs);
+
         // TODO: not fully implemented?
         //extractorOutput.endTracks(); // commit all written data
 
         Track track = tracks.get(1);
         long timeUs = part.startTimeMs * 1_000L;
         track.output.sampleMetadata(timeUs, blockFlags, sampleBytesWritten, 0, track.cryptoData);
+        sampleBytesWritten = 0;
         //commitSampleToOutput(track, timeUs);
     }
 
@@ -471,6 +477,8 @@ public class SabrExtractor implements Extractor {
             return CODEC_ID_VP9;
         } else if (codecId.startsWith("avc")) {
             return CODEC_ID_H264;
+        } else if (codecId.startsWith("mp4a")) {
+            return CODEC_ID_AAC;
         }
 
         return codecId;
@@ -484,7 +492,7 @@ public class SabrExtractor implements Extractor {
 
     private void resetSample() {
         sampleBytesRead = 0;
-        sampleBytesWritten = 0;
+        //sampleBytesWritten = 0;
         sampleCurrentNalBytesRemaining = 0;
         sampleEncodingHandled = false;
         sampleSignalByteRead = false;
