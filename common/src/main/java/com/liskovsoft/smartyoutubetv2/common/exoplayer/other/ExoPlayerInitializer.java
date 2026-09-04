@@ -35,10 +35,12 @@ public class ExoPlayerInitializer {
     private float mVolumeBoost;
     private SimpleExoPlayer mPlayer;
     private static AudioAttributes sAudioAttributes;
+    private final PlayerTweaksData.SeekParametersListener mSeekParametersListener = this::applySeekParameters;
 
     public ExoPlayerInitializer(Context context) {
         mPlayerData = PlayerData.instance(context);
         mPlayerTweaksData = PlayerTweaksData.instance(context);
+        mPlayerTweaksData.addSeekParametersListener(mSeekParametersListener);
 
         long deviceRam = DeviceHelpers.getDeviceRam(context);
 
@@ -179,11 +181,45 @@ public class ExoPlayerInitializer {
         // NOTE: Avoid using seekParameters. ContentBlock hangs because of constant skipping to the segment start.
         // ContentBlock hangs on the last segment: https://www.youtube.com/watch?v=pYymRbfjKv8
 
-        // Fix seeking on TextureView (some devices only)
-        if (mPlayerTweaksData.isTextureViewEnabled()) {
-            // Also, live stream (dash) seeking fix
-            player.setSeekParameters(SeekParameters.CLOSEST_SYNC);
+        applySeekParameters(player);
+    }
+
+    public void applySeekParameters() {
+        if (mPlayer != null) {
+            applySeekParameters(mPlayer);
         }
+    }
+
+    private void applySeekParameters(SimpleExoPlayer player) {
+        if (player == null) {
+            return;
+        }
+
+        SeekParameters seekParameters;
+
+        switch (mPlayerTweaksData.getSeekParametersType()) {
+            case PlayerTweaksData.SEEK_PARAMETERS_CLOSEST_SYNC:
+                seekParameters = SeekParameters.CLOSEST_SYNC;
+                break;
+            case PlayerTweaksData.SEEK_PARAMETERS_PREVIOUS_SYNC:
+                seekParameters = SeekParameters.PREVIOUS_SYNC;
+                break;
+            case PlayerTweaksData.SEEK_PARAMETERS_NEXT_SYNC:
+                seekParameters = SeekParameters.NEXT_SYNC;
+                break;
+            case PlayerTweaksData.SEEK_PARAMETERS_EXACT:
+            default:
+                if (mPlayerTweaksData.isTextureViewEnabled()) {
+                    // Fix seeking on TextureView (some devices only)
+                    // Also, live stream (dash) seeking fix
+                    seekParameters = SeekParameters.CLOSEST_SYNC;
+                } else {
+                    seekParameters = SeekParameters.EXACT;
+                }
+                break;
+        }
+
+        player.setSeekParameters(seekParameters);
     }
 
     public float getVolumeBoost() {
@@ -191,6 +227,8 @@ public class ExoPlayerInitializer {
     }
 
     public void release() {
+        mPlayerTweaksData.removeSeekParametersListener(mSeekParametersListener);
+
         if (mVolumeBooster != null) {
             mVolumeBooster.release();
         }

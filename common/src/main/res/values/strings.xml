@@ -353,6 +353,11 @@
     <string name="player_seek_regular">Regular</string>
     <string name="player_seek_confirmation_pause">With confirmation (pause while seeking)</string>
     <string name="player_seek_confirmation_play">With confirmation (play while seeking)</string>
+    <string name="player_seek_parameters">Seek parameters</string>
+    <string name="player_seek_parameters_exact">Exact (EXACT, default)</string>
+    <string name="player_seek_parameters_closest_sync">Closest sync point (CLOSEST_SYNC)</string>
+    <string name="player_seek_parameters_previous_sync">Previous sync point (PREVIOUS_SYNC)</string>
+    <string name="player_seek_parameters_next_sync">Next sync point (NEXT_SYNC)</string>
     <string name="hide_shorts_from_home">Hide shorts from Home</string>
     <string name="finish_on_disconnect">Close the app after disconnecting the phone/tablet</string>
     <string name="update_error">Update error</string>

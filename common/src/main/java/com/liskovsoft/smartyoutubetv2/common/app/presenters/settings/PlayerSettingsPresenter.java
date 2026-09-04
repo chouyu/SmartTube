@@ -72,6 +72,7 @@ public class PlayerSettingsPresenter extends BasePresenter<Void> {
         appendSeekTypeCategory(settingsPresenter);
         appendSeekingPreviewCategory(settingsPresenter);
         AppDialogUtil.appendSeekIntervalDialogItems(getContext(), settingsPresenter, mPlayerData, false);
+        appendSeekParametersCategory(settingsPresenter);
         //appendRememberSpeedCategory(settingsPresenter);
         //appendScreenOffTimeoutCategory(settingsPresenter);
         appendEndingTimeCategory(settingsPresenter);
@@ -267,6 +268,11 @@ public class PlayerSettingsPresenter extends BasePresenter<Void> {
                 mPlayerData.isSeekConfirmPlayEnabled()));
 
         settingsPresenter.appendRadioCategory(getContext().getString(R.string.player_seek_type), options);
+    }
+
+    private void appendSeekParametersCategory(AppDialogPresenter settingsPresenter) {
+        OptionCategory category = AppDialogUtil.createSeekParametersCategory(getContext());
+        settingsPresenter.appendCategory(category);
     }
 
     private void appendEndingTimeCategory(AppDialogPresenter settingsPresenter) {

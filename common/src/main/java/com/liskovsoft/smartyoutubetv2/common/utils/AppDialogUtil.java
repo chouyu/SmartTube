@@ -80,6 +80,7 @@ public class AppDialogUtil {
     private static final int PLAYER_ENGINE_ID = 147;
     private static final int IGNORE_DURATION_ID = 148;
     private static final int SLEEP_TIMER_ID = 149;
+    private static final int SEEK_PARAMETERS_ID = 150;
     private static final int SUBTITLE_STYLES_ID = 45;
     private static final int SUBTITLE_SIZE_ID = 46;
     private static final int SUBTITLE_POSITION_ID = 47;
@@ -340,6 +341,33 @@ public class AppDialogUtil {
                     onBufferSelected.run();
                 },
                 playerData.getVideoBufferType() == type);
+    }
+
+    public static OptionCategory createSeekParametersCategory(Context context) {
+        return createSeekParametersCategory(context, () -> {});
+    }
+
+    public static OptionCategory createSeekParametersCategory(Context context, Runnable onSeekParametersSelected) {
+        PlayerTweaksData tweaksData = PlayerTweaksData.instance(context);
+        String title = context.getString(R.string.player_seek_parameters);
+        List<OptionItem> options = new ArrayList<>();
+        options.add(createSeekParametersOption(context, tweaksData, R.string.player_seek_parameters_exact, PlayerTweaksData.SEEK_PARAMETERS_EXACT, onSeekParametersSelected));
+        options.add(createSeekParametersOption(context, tweaksData, R.string.player_seek_parameters_closest_sync, PlayerTweaksData.SEEK_PARAMETERS_CLOSEST_SYNC, onSeekParametersSelected));
+        options.add(createSeekParametersOption(context, tweaksData, R.string.player_seek_parameters_previous_sync, PlayerTweaksData.SEEK_PARAMETERS_PREVIOUS_SYNC, onSeekParametersSelected));
+        options.add(createSeekParametersOption(context, tweaksData, R.string.player_seek_parameters_next_sync, PlayerTweaksData.SEEK_PARAMETERS_NEXT_SYNC, onSeekParametersSelected));
+        return OptionCategory.from(SEEK_PARAMETERS_ID, OptionCategory.TYPE_RADIO_LIST, title, options);
+    }
+
+    private static OptionItem createSeekParametersOption(Context context, PlayerTweaksData tweaksData, int titleResId, int type, Runnable onSelected) {
+        return UiOptionItem.from(
+                context.getString(titleResId),
+                optionItem -> {
+                    tweaksData.setSeekParametersType(type);
+                    if (onSelected != null) {
+                        onSelected.run();
+                    }
+                },
+                tweaksData.getSeekParametersType() == type);
     }
 
     public static OptionCategory createAudioLanguageCategory(Context context) {

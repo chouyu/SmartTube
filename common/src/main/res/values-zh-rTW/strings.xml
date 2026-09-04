@@ -322,6 +322,11 @@
   <string name="player_seek_regular">一般</string>
   <string name="player_seek_confirmation_pause">確認後再跳轉（快轉時暫停播放）</string>
   <string name="player_seek_confirmation_play">確認後再跳轉（快轉時維持播放）</string>
+  <string name="player_seek_parameters">快進/快退定位參數 (SeekParameters)</string>
+  <string name="player_seek_parameters_exact">精確定位 (EXACT，預設)</string>
+  <string name="player_seek_parameters_closest_sync">最近同步點/關鍵影格 (CLOSEST_SYNC)</string>
+  <string name="player_seek_parameters_previous_sync">前一個同步點/關鍵影格 (PREVIOUS_SYNC)</string>
+  <string name="player_seek_parameters_next_sync">後一個同步點/關鍵影格 (NEXT_SYNC)</string>
   <string name="hide_shorts_from_home">在首頁隱藏 Shorts</string>
   <string name="finish_on_disconnect">手機 / 平板電腦中斷連線後，關閉應用程式</string>
   <string name="update_error">更新錯誤</string>

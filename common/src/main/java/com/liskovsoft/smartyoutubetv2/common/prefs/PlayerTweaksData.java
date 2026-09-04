@@ -10,8 +10,19 @@ import com.liskovsoft.smartyoutubetv2.common.prefs.AppPrefs.ProfileChangeListene
 import com.liskovsoft.smartyoutubetv2.common.utils.Utils;
 import com.liskovsoft.youtubeapi.service.internal.MediaServiceData;
 
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
+
 public class PlayerTweaksData implements ProfileChangeListener {
+    public interface SeekParametersListener {
+        void onSeekParametersChanged();
+    }
     private static final String VIDEO_PLAYER_TWEAKS_DATA = "video_player_tweaks_data";
+    public static final int SEEK_PARAMETERS_EXACT = 0;
+    public static final int SEEK_PARAMETERS_CLOSEST_SYNC = 1;
+    public static final int SEEK_PARAMETERS_PREVIOUS_SYNC = 2;
+    public static final int SEEK_PARAMETERS_NEXT_SYNC = 3;
+    public static final int SEEK_PARAMETERS_DEFAULT = SEEK_PARAMETERS_EXACT;
     public static final int PLAYER_DATA_SOURCE_DEFAULT = 0;
     public static final int PLAYER_DATA_SOURCE_OKHTTP = 1;
     public static final int PLAYER_DATA_SOURCE_CRONET = 2;
@@ -110,6 +121,8 @@ public class PlayerTweaksData implements ProfileChangeListener {
     private boolean mIsDontResizeVideoToFitDialogEnabled;
     private boolean mIsSuggestionsHorizontallyScrolled;
     private boolean mIsQueueRespectsPlaybackMode;
+    private final Set<SeekParametersListener> mSeekParametersListeners = new CopyOnWriteArraySet<>();
+    private int mSeekParametersType;
     private final Runnable mPersistDataInt = this::persistDataInt;
 
     private PlayerTweaksData(Context context) {
@@ -692,6 +705,34 @@ public class PlayerTweaksData implements ProfileChangeListener {
         persistData();
     }
 
+    public int getSeekParametersType() {
+        return mSeekParametersType;
+    }
+
+    public void setSeekParametersType(int type) {
+        mSeekParametersType = type;
+        persistData();
+        notifySeekParametersChanged();
+    }
+
+    public void addSeekParametersListener(SeekParametersListener listener) {
+        if (listener != null) {
+            mSeekParametersListeners.add(listener);
+        }
+    }
+
+    public void removeSeekParametersListener(SeekParametersListener listener) {
+        if (listener != null) {
+            mSeekParametersListeners.remove(listener);
+        }
+    }
+
+    private void notifySeekParametersChanged() {
+        for (SeekParametersListener listener : mSeekParametersListeners) {
+            listener.onSeekParametersChanged();
+        }
+    }
+
     private void restoreData() {
         String data = mPrefs.getProfileData(VIDEO_PLAYER_TWEAKS_DATA);
 
@@ -764,6 +805,10 @@ public class PlayerTweaksData implements ProfileChangeListener {
         mIsQuickSkipVideosAltEnabled = Helpers.parseBoolean(split, 58, false);
         mIsAudioTimeStretchingEnabled = Helpers.parseBoolean(split, 59, true);
         mIsQueueRespectsPlaybackMode = Helpers.parseBoolean(split, 60, false);
+        mSeekParametersType = Helpers.parseInt(split, 61, SEEK_PARAMETERS_DEFAULT);
+        if (mSeekParametersType < SEEK_PARAMETERS_EXACT || mSeekParametersType > SEEK_PARAMETERS_NEXT_SYNC) {
+            mSeekParametersType = SEEK_PARAMETERS_DEFAULT;
+        }
 
         updateDefaultValues();
     }
@@ -791,7 +836,8 @@ public class PlayerTweaksData implements ProfileChangeListener {
                 mIsUnsafeAudioFormatsEnabled, null, mIsLoopShortsEnabled, mIsQuickSkipShortsEnabled, mIsRememberPositionOfLiveVideosEnabled,
                 mIsOculusQuestFixEnabled, null, mIsExtraLongSpeedListEnabled, mIsQuickSkipVideosEnabled, mIsNetworkErrorFixingDisabled, mIsCommentsPlacedLeft,
                 null, mIsAudioFocusEnabled, mIsDontResizeVideoToFitDialogEnabled, mIsSuggestionsHorizontallyScrolled,
-                mIsQuickSkipShortsAltEnabled, mIsQuickSkipVideosAltEnabled, mIsAudioTimeStretchingEnabled, mIsQueueRespectsPlaybackMode
+                mIsQuickSkipShortsAltEnabled, mIsQuickSkipVideosAltEnabled, mIsAudioTimeStretchingEnabled, mIsQueueRespectsPlaybackMode,
+                mSeekParametersType
                 ));
     }
 
@@ -807,5 +853,6 @@ public class PlayerTweaksData implements ProfileChangeListener {
     public void onProfileChanged() {
         Utils.removeCallbacks(mPersistDataInt);
         restoreData();
+        notifySeekParametersChanged();
     }
 }

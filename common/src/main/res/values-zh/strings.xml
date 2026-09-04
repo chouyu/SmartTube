@@ -344,6 +344,11 @@
   <string name="player_seek_regular">常规</string>
   <string name="player_seek_confirmation_pause">带确认（快进时暂停）</string>
   <string name="player_seek_confirmation_play">带确认（快进时播放）</string>
+  <string name="player_seek_parameters">快进/快退定位参数 (SeekParameters)</string>
+  <string name="player_seek_parameters_exact">精确定位 (EXACT，默认)</string>
+  <string name="player_seek_parameters_closest_sync">最近同步点/关键帧 (CLOSEST_SYNC)</string>
+  <string name="player_seek_parameters_previous_sync">前一个同步点/关键帧 (PREVIOUS_SYNC)</string>
+  <string name="player_seek_parameters_next_sync">后一个同步点/关键帧 (NEXT_SYNC)</string>
   <string name="hide_shorts_from_home">隐藏首页的短视频</string>
   <string name="finish_on_disconnect">手机/平板断开连接后关闭应用</string>
   <string name="update_error">更新错误</string>
